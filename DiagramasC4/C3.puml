@@ -1,0 +1,54 @@
+@startuml C3_Componentes
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama C3 - Componentes: AWS Lambda Function (Skill Recetario)
+
+Container_Boundary(lambdaFunction, "AWS Lambda Function") {
+    
+    Component(lambdaMain, "lambda_function.py", "Python Module", "Entry point de la skill. Contiene todos los Request Handlers y Exception Handlers")
+    
+    Component(servicesLayer, "services.py", "Python Module", "Capa de servicios con lógica de negocio (RecetarioService)")
+    
+    Component(databaseLayer, "database.py", "Python Module", "Capa de acceso a datos (DatabaseManager) con caché multi-nivel")
+    
+    Component(modelsLayer, "models.py", "Python Module", "Modelos de dominio: Receta, Preparacion con validaciones")
+    
+    Component(phrasesManager, "phrases.py", "Python Module", "Gestión de respuestas de voz (PhrasesManager) con variaciones aleatorias")
+    
+    Component(configModule, "config.py", "Python Module", "Configuración centralizada (variables de entorno, constantes)")
+    
+    Component(utilsModule, "utils.py", "Python Module", "Utilidades compartidas (presigned URLs para S3)")
+    
+    Component(askSDK, "Ask SDK Core", "Python Library", "Framework de Alexa Skills Kit (handlers, attributes, response builder)")
+    
+    Component(s3Adapter, "S3 Persistence Adapter", "Ask SDK Component", "Adaptador para persistencia en S3")
+    
+    Component(fakeS3, "FakeS3Adapter", "Python Class", "Mock de S3 para desarrollo local (almacenamiento en memoria)")
+}
+
+ContainerDb_Ext(s3Bucket, "S3 Bucket", "Amazon S3")
+ContainerDb_Ext(dynamoTable, "DynamoDB Table", "Cache")
+System_Ext(alexaService, "Alexa Voice Service")
+
+Rel(alexaService, lambdaMain, "Invoca handlers", "JSON Request")
+Rel(lambdaMain, alexaService, "Retorna response", "JSON Response")
+
+Rel(lambdaMain, askSDK, "Usa", "Routing, Attributes")
+Rel(lambdaMain, servicesLayer, "Llama a", "Métodos de servicio")
+Rel(lambdaMain, phrasesManager, "Obtiene frases", "get_welcome_message(), etc.")
+
+Rel(servicesLayer, databaseLayer, "Obtiene/guarda datos", "get_user_data(), save_user_data()")
+Rel(servicesLayer, modelsLayer, "Crea instancias", "Receta(), Preparacion()")
+
+Rel(databaseLayer, s3Adapter, "Usa para S3", "get_attributes(), save_attributes()")
+Rel(databaseLayer, fakeS3, "Usa en desarrollo", "get_attributes(), save_attributes()")
+Rel(databaseLayer, dynamoTable, "Cache opcional", "boto3 DynamoDB API")
+
+Rel(s3Adapter, s3Bucket, "Lee/Escribe", "S3 API")
+
+Rel(configModule, lambdaMain, "Provee config", "Constantes")
+Rel(configModule, databaseLayer, "Provee config", "Flags, TTL")
+
+@enduml

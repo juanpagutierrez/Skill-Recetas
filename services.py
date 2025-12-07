@@ -1,9 +1,11 @@
 """
 Capa de compatibilidad para servicios - Facade Pattern
 Mantiene la interfaz existente mientras delega a servicios especializados (SOLID).
+Incluye ejemplos de patrones de diseño: Singleton, Builder, Prototype.
 """
 import logging
 from database import DatabaseManager
+from models import RecetaBuilder, PreparacionBuilder, Receta
 from services_domain import (
     RecetaSearchService,
     RecetaStateService, 
@@ -146,3 +148,51 @@ class RecetarioService:
             return resultado["error"]
         else:
             return resultado
+    
+    # ==============================
+    # Ejemplos de uso de patrones de diseño
+    # ==============================
+    
+    @classmethod
+    def crear_receta_con_builder(cls, nombre: str, ingredientes: str = None, tipo: str = None) -> Receta:
+        """Ejemplo de uso del Builder pattern para crear recetas"""
+        return (RecetaBuilder()
+                .with_nombre(nombre)
+                .with_ingredientes(ingredientes or "Ingredientes por definir")
+                .with_tipo(tipo or "Por categorizar")
+                .build())
+    
+    @classmethod
+    def crear_receta_desde_dict(cls, data: dict) -> Receta:
+        """Ejemplo de Builder pattern con datos de diccionario"""
+        return (RecetaBuilder()
+                .from_dict(data)
+                .build())
+    
+    @classmethod
+    def clonar_receta_como_variante(cls, receta_original: Receta, sufijo: str) -> Receta:
+        """Ejemplo de Prototype pattern para crear variantes de recetas"""
+        return receta_original.clone_as_variant(sufijo)
+    
+    @classmethod
+    def crear_preparacion_con_builder(cls, receta_id: str, nombre_receta: str, 
+                                     nombre_persona: str = None, dias: int = 7):
+        """Ejemplo de uso del Builder pattern para preparaciones"""
+        return (PreparacionBuilder()
+                .for_receta(receta_id, nombre_receta)
+                .by_person(nombre_persona or "un amigo")
+                .with_duration(dias)
+                .build())
+    
+    @classmethod
+    def obtener_database_manager_singleton(cls):
+        """Ejemplo de acceso al Singleton DatabaseManager"""
+        return DatabaseManager.get_instance()
+    
+    @classmethod
+    def crear_receta_basada_en_otra(cls, receta_base: Receta, modificaciones: dict) -> Receta:
+        """Ejemplo combinando Prototype y Builder patterns"""
+        return (RecetaBuilder()
+                .from_prototype(receta_base)  # Usar Prototype
+                .from_dict(modificaciones)    # Aplicar modificaciones con Builder
+                .build())

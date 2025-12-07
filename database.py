@@ -5,6 +5,22 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from repositories import IPersistenceAdapter, ICacheStrategy, IUserRepository
 
+# ==============================
+# Singleton Pattern - Metaclase
+# ==============================
+class SingletonMeta(type):
+    """Metaclase para implementar el patrón Singleton thread-safe."""
+    _instances: Dict[type, Any] = {}
+    _lock = object()  # Simple lock para thread safety
+    
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            # Simple thread safety usando synchronized block simulation
+            with cls._lock:
+                if cls not in cls._instances:
+                    cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
+
 logger = logging.getLogger(__name__)
 
 # ==============================
@@ -200,34 +216,43 @@ class UserRepository(IUserRepository):
 # ==============================
 # DatabaseManager - Facade Pattern para compatibilidad con código existente
 # ==============================
-class DatabaseManager:
-    """Facade que delega al repositorio - facilita migración gradual"""
+class DatabaseManager(metaclass=SingletonMeta):
+    """Facade que delega al repositorio - facilita migración gradual con Singleton pattern"""
     
-    _repository: Optional[IUserRepository] = None
-    
-    @classmethod
-    def initialize(cls, repository: IUserRepository):
+    def __init__(self):
+        self._repository: Optional[IUserRepository] = None
+        
+    def initialize(self, repository: IUserRepository):
         """Inicializa el repositorio a usar"""
-        cls._repository = repository
+        self._repository = repository
     
-    @classmethod
-    def _user_id(cls, handler_input):
+    @property
+    def repository(self):
+        if self._repository is None:
+            raise RuntimeError("DatabaseManager no inicializado. Llama a initialize() primero")
+        return self._repository
+    
+    def _user_id(self, handler_input):
         return handler_input.request_envelope.context.system.user.user_id
     
-    @classmethod
-    def get_user_data(cls, handler_input) -> Dict[str, Any]:
-        if cls._repository is None:
-            raise RuntimeError("DatabaseManager no inicializado. Llama a DatabaseManager.initialize() primero")
-        return cls._repository.get_user_data(handler_input)
+    def get_user_data(self, handler_input) -> Dict[str, Any]:
+        return self.repository.get_user_data(handler_input)
     
-    @classmethod
-    def save_user_data(cls, handler_input, data: Dict[str, Any]) -> None:
-        if cls._repository is None:
-            raise RuntimeError("DatabaseManager no inicializado. Llama a DatabaseManager.initialize() primero")
-        cls._repository.save_user_data(handler_input, data)
+    def save_user_data(self, handler_input, data: Dict[str, Any]) -> None:
+        self.repository.save_user_data(handler_input, data)
     
-    @classmethod
-    def initial_data(cls) -> Dict[str, Any]:
-        if cls._repository is None:
-            raise RuntimeError("DatabaseManager no inicializado. Llama a DatabaseManager.initialize() primero")
-        return cls._repository.get_initial_data()
+    def initial_data(self) -> Dict[str, Any]:
+        return self.repository.get_initial_data()
+        
+    # Métodos estáticos para compatibilidad con código existente
+    @staticmethod
+    def initialize_singleton(repository: IUserRepository):
+        """Inicializa la instancia singleton"""
+        instance = DatabaseManager()
+        instance.initialize(repository)
+        return instance
+    
+    @staticmethod 
+    def get_instance() -> 'DatabaseManager':
+        """Obtiene la instancia singleton"""
+        return DatabaseManager()

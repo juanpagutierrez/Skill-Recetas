@@ -1,0 +1,30 @@
+@startuml C1_Contexto
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama C1 - Contexto del Sistema: Skill Recetario
+
+Person(usuario, "Usuario Final", "Persona que cocina y desea gestionar sus recetas mediante comandos de voz")
+
+System(skillRecetario, "Skill Recetario", "Sistema de gestión de recetas de cocina por voz que permite agregar, consultar, buscar y marcar recetas como preparadas")
+
+System_Ext(alexaVoiceService, "Alexa Voice Service", "Plataforma de Amazon que procesa voz, reconoce intents y envía requests a la skill")
+
+System_Ext(awsLambda, "AWS Lambda", "Servicio de computación serverless que ejecuta el código de la skill")
+
+System_Ext(amazonS3, "Amazon S3", "Servicio de almacenamiento en la nube para persistencia de datos del usuario")
+
+System_Ext(amazonDynamoDB, "Amazon DynamoDB", "Base de datos NoSQL utilizada como caché opcional para mejorar rendimiento")
+
+Rel(usuario, alexaVoiceService, "Habla con", "Comandos de voz")
+Rel(alexaVoiceService, usuario, "Responde a", "Audio sintetizado")
+
+Rel(alexaVoiceService, skillRecetario, "Envía requests JSON", "HTTPS/JSON")
+Rel(skillRecetario, alexaVoiceService, "Retorna responses", "HTTPS/JSON")
+
+Rel(skillRecetario, awsLambda, "Se ejecuta en", "Python Runtime")
+Rel(skillRecetario, amazonS3, "Lee/Escribe datos", "S3 API/SDK")
+Rel(skillRecetario, amazonDynamoDB, "Cache de datos", "DynamoDB API/SDK (Opcional)")
+
+@enduml

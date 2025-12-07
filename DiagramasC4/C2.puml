@@ -1,0 +1,36 @@
+@startuml C2_Contenedores
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama C2 - Contenedores: Skill Recetario
+
+Person(usuario, "Usuario", "Persona que cocina")
+
+System_Boundary(alexaEcosystem, "Amazon Alexa Ecosystem") {
+    Container(alexaDevice, "Dispositivo Alexa", "Echo, Echo Dot, etc.", "Captura voz del usuario y reproduce respuestas")
+    Container(alexaService, "Alexa Voice Service", "AVS Cloud", "Procesamiento de lenguaje natural (NLU) y síntesis de voz (TTS)")
+}
+
+System_Boundary(awsCloud, "Amazon Web Services") {
+    Container(lambdaFunction, "Lambda Function", "Python 3.x", "Contiene toda la lógica de la Skill: handlers, servicios, modelos y acceso a datos")
+    
+    ContainerDb(s3Bucket, "S3 Bucket", "Amazon S3", "Almacenamiento persistente de datos de usuario (recetas, preparaciones, historial)")
+    
+    ContainerDb(dynamoTable, "DynamoDB Table", "RecetarioSkillCache", "Caché opcional con TTL para mejorar tiempos de respuesta")
+    
+    Container(cloudWatchLogs, "CloudWatch Logs", "AWS CloudWatch", "Registro de logs y monitoreo de la función Lambda")
+}
+
+Rel(usuario, alexaDevice, "Habla con", "Voz")
+Rel(alexaDevice, alexaService, "Envía audio", "Audio Stream")
+Rel(alexaService, alexaDevice, "Reproduce respuesta", "Audio Stream")
+
+Rel(alexaService, lambdaFunction, "Invoca con request JSON", "HTTPS/JSON (Request/Response)")
+Rel(lambdaFunction, alexaService, "Retorna response JSON", "HTTPS/JSON")
+
+Rel(lambdaFunction, s3Bucket, "Lee/Escribe user_data", "AWS SDK boto3 (S3Adapter)")
+Rel(lambdaFunction, dynamoTable, "Cache get/put", "AWS SDK boto3 (opcional)")
+Rel(lambdaFunction, cloudWatchLogs, "Escribe logs", "CloudWatch Logs API")
+
+@enduml

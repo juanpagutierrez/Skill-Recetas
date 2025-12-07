@@ -13,6 +13,8 @@ from ask_sdk_core.handler_input import HandlerInput
 import phrases
 from phrases import PhrasesManager
 from config import USE_FAKE_S3, S3_PERSISTENCE_BUCKET, RECETAS_POR_PAGINA
+from abc import ABC, abstractmethod
+from typing import Dict, Any, Optional, List
 
 # Importar componentes SOLID
 from database import (
@@ -24,7 +26,7 @@ from database import (
 )
 from services_domain import RecetaStateService
 from services import RecetarioService
-from models import Preparacion
+from models import Preparacion, RecetaBuilder, PreparacionBuilder
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -80,10 +82,252 @@ def generar_id_preparacion():
     return f"PREP-{datetime.now().strftime('%Y%m%d')}-{generar_id_unico()}"
 
 # ==============================
-# Handlers
+# Strategy Pattern - Estrategias de respuesta
+# ==============================
+class ResponseStrategy(ABC):
+    """Estrategia base para generar respuestas"""
+    
+    @abstractmethod
+    def generate_response(self, handler_input, context: Dict[str, Any]) -> Dict[str, str]:
+        """Genera una respuesta basada en el contexto"""
+        pass
+
+class WelcomeResponseStrategy(ResponseStrategy):
+    """Estrategia para respuestas de bienvenida"""
+    
+    def generate_response(self, handler_input, context: Dict[str, Any]) -> Dict[str, str]:
+        user_data = context.get('user_data', {})
+        total_recetas = context.get('total_recetas', 0)
+        preparaciones_activas = context.get('preparaciones_activas', 0)
+        usuario_frecuente = context.get('usuario_frecuente', False)
+        
+        speak_output = PhrasesManager.get_welcome_message(
+            user_data, total_recetas, preparaciones_activas, usuario_frecuente
+        )
+        reprompt_output = "¿Quieres que te recuerde los comandos principales o añadir una receta?"
+        
+        return {
+            'speak_output': speak_output,
+            'reprompt_output': reprompt_output
+        }
+
+class ErrorResponseStrategy(ResponseStrategy):
+    """Estrategia para respuestas de error"""
+    
+    def generate_response(self, handler_input, context: Dict[str, Any]) -> Dict[str, str]:
+        error_type = context.get('error_type', 'general')
+        
+        if error_type == 'no_recetas':
+            speak_output = "Aún no tienes recetas en tu recetario. ¿Te gustaría agregar la primera? Solo di: agrega una receta."
+            reprompt_output = "¿Quieres agregar tu primera receta?"
+        elif error_type == 'no_encontrado':
+            nombre = context.get('nombre', '')
+            speak_output = f"No encontré '{nombre}' en tu recetario. {PhrasesManager.get_algo_mas()}"
+            reprompt_output = PhrasesManager.get_preguntas_que_hacer()
+        else:
+            speak_output = "Hubo un problema. ¿Intentamos de nuevo?"
+            reprompt_output = "¿Qué deseas hacer?"
+            
+        return {
+            'speak_output': speak_output,
+            'reprompt_output': reprompt_output
+        }
+
+# ==============================
+# Factory Pattern - Factory de Handlers
+# ==============================
+class HandlerFactory:
+    """Factory para crear handlers con patrones aplicados"""
+    
+    _response_strategies = {
+        'welcome': WelcomeResponseStrategy(),
+        'error': ErrorResponseStrategy()
+    }
+    
+    @classmethod
+    def get_response_strategy(cls, strategy_type: str) -> ResponseStrategy:
+        """Obtiene una estrategia de respuesta"""
+        return cls._response_strategies.get(strategy_type, cls._response_strategies['error'])
+    
+    @classmethod
+    def create_builder_based_handler(cls, handler_type: str):
+        """Crea handlers que usan Builder pattern para construir objetos"""
+        if handler_type == 'receta':
+            return RecetaBuilderHandler()
+        elif handler_type == 'preparacion':
+            return PreparacionBuilderHandler()
+        return None
+
+# ==============================
+# Template Method Pattern - Handler base
+# ==============================
+class BaseSkillHandler(AbstractRequestHandler):
+    """Handler base que implementa Template Method pattern"""
+    
+    def handle(self, handler_input):
+        """Template method que define el flujo común"""
+        try:
+            # 1. Preparar contexto
+            context = self.prepare_context(handler_input)
+            
+            # 2. Validar entrada
+            validation_result = self.validate_input(handler_input, context)
+            if not validation_result['valid']:
+                return self.create_error_response(handler_input, validation_result)
+            
+            # 3. Procesar lógica específica
+            result = self.process_business_logic(handler_input, context)
+            
+            # 4. Generar respuesta
+            return self.generate_response(handler_input, result)
+            
+        except Exception as e:
+            logger.error(f"Error en {self.__class__.__name__}: {e}", exc_info=True)
+            return self.handle_error(handler_input, e)
+    
+    @abstractmethod
+    def prepare_context(self, handler_input) -> Dict[str, Any]:
+        """Prepara el contexto necesario - debe ser implementado"""
+        pass
+    
+    def validate_input(self, handler_input, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Valida la entrada - puede ser sobrescrito"""
+        return {'valid': True}
+    
+    @abstractmethod
+    def process_business_logic(self, handler_input, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Procesa la lógica de negocio específica - debe ser implementado"""
+        pass
+    
+    def generate_response(self, handler_input, result: Dict[str, Any]):
+        """Genera la respuesta final - puede ser sobrescrito"""
+        speak_output = result.get('speak_output', 'Operación completada.')
+        reprompt_output = result.get('reprompt_output', '¿Qué más deseas hacer?')
+        
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(reprompt_output)
+                .response
+        )
+    
+    def create_error_response(self, handler_input, validation_result: Dict[str, Any]):
+        """Crea respuesta de error de validación"""
+        error_strategy = HandlerFactory.get_response_strategy('error')
+        context = {'error_type': validation_result.get('error_type', 'general')}
+        response_data = error_strategy.generate_response(handler_input, context)
+        
+        return (
+            handler_input.response_builder
+                .speak(response_data['speak_output'])
+                .ask(response_data['reprompt_output'])
+                .response
+        )
+    
+    def handle_error(self, handler_input, error: Exception):
+        """Maneja errores generales"""
+        return (
+            handler_input.response_builder
+                .speak("Hubo un problema. ¿Intentamos de nuevo?")
+                .ask("¿Qué deseas hacer?")
+                .response
+        )
+
+# ==============================
+# Handlers específicos usando patrones
+# ==============================
+class RecetaBuilderHandler(BaseSkillHandler):
+    """Handler que usa Builder pattern para crear recetas"""
+    
+    def can_handle(self, handler_input):
+        return ask_utils.is_intent_name("CrearRecetaConBuilderIntent")(handler_input)
+    
+    def prepare_context(self, handler_input) -> Dict[str, Any]:
+        return {
+            'nombre': ask_utils.get_slot_value(handler_input, "nombre"),
+            'ingredientes': ask_utils.get_slot_value(handler_input, "ingredientes"),
+            'tipo': ask_utils.get_slot_value(handler_input, "tipo")
+        }
+    
+    def validate_input(self, handler_input, context: Dict[str, Any]) -> Dict[str, Any]:
+        if not context.get('nombre'):
+            return {
+                'valid': False,
+                'error_type': 'missing_name',
+                'message': 'Necesito el nombre de la receta'
+            }
+        return {'valid': True}
+    
+    def process_business_logic(self, handler_input, context: Dict[str, Any]) -> Dict[str, Any]:
+        # Usar Builder pattern para crear la receta
+        receta = (RecetaBuilder()
+                  .with_nombre(context['nombre'])
+                  .with_ingredientes(context.get('ingredientes'))
+                  .with_tipo(context.get('tipo'))
+                  .build())
+        
+        # Guardar usando el servicio
+        user_data = DatabaseManager.get_user_data(handler_input)
+        recetas = user_data.get("recetas_disponibles", [])
+        recetas.append(receta.to_dict())
+        user_data["recetas_disponibles"] = recetas
+        DatabaseManager.save_user_data(handler_input, user_data)
+        
+        return {
+            'speak_output': f"¡Excelente! He creado '{receta.nombre}' usando el patrón Builder. {PhrasesManager.get_algo_mas()}",
+            'reprompt_output': PhrasesManager.get_preguntas_que_hacer()
+        }
+
+class PreparacionBuilderHandler(BaseSkillHandler):
+    """Handler que usa Builder pattern para crear preparaciones"""
+    
+    def can_handle(self, handler_input):
+        return ask_utils.is_intent_name("CrearPreparacionConBuilderIntent")(handler_input)
+    
+    def prepare_context(self, handler_input) -> Dict[str, Any]:
+        return {
+            'receta_id': ask_utils.get_slot_value(handler_input, "receta_id"),
+            'nombre_receta': ask_utils.get_slot_value(handler_input, "nombre_receta"),
+            'nombre_persona': ask_utils.get_slot_value(handler_input, "nombre_persona"),
+            'dias': int(ask_utils.get_slot_value(handler_input, "dias") or 7)
+        }
+    
+    def validate_input(self, handler_input, context: Dict[str, Any]) -> Dict[str, Any]:
+        if not context.get('receta_id') or not context.get('nombre_receta'):
+            return {
+                'valid': False,
+                'error_type': 'missing_recipe_info',
+                'message': 'Necesito la información de la receta'
+            }
+        return {'valid': True}
+    
+    def process_business_logic(self, handler_input, context: Dict[str, Any]) -> Dict[str, Any]:
+        # Usar Builder pattern para crear la preparación
+        preparacion = (PreparacionBuilder()
+                      .for_receta(context['receta_id'], context['nombre_receta'])
+                      .by_person(context.get('nombre_persona'))
+                      .with_duration(context['dias'])
+                      .build())
+        
+        # Guardar usando el servicio
+        user_data = DatabaseManager.get_user_data(handler_input)
+        preparaciones = user_data.get("preparaciones_activas", [])
+        preparaciones.append(preparacion.to_dict())
+        user_data["preparaciones_activas"] = preparaciones
+        DatabaseManager.save_user_data(handler_input, user_data)
+        
+        return {
+            'speak_output': f"¡Perfecto! He registrado la preparación de '{preparacion.nombre}' usando Builder pattern. {PhrasesManager.get_algo_mas()}",
+            'reprompt_output': PhrasesManager.get_preguntas_que_hacer()
+        }
+
+# ==============================
+# Handlers originales (manteniendo compatibilidad)
 # ==============================
 
 class LaunchRequestHandler(AbstractRequestHandler):
+    """Handler de bienvenida que usa Strategy pattern para respuestas"""
+    
     def can_handle(self, handler_input):
         return ask_utils.is_request_type("LaunchRequest")(handler_input)
 
@@ -95,8 +339,16 @@ class LaunchRequestHandler(AbstractRequestHandler):
         total_recetas = len(recetas)
         preparaciones_activas = len(user_data.get("preparaciones_activas", []))
         usuario_frecuente = user_data.get("usuario_frecuente", False)
-        speak_output = PhrasesManager.get_welcome_message(user_data, total_recetas, preparaciones_activas, usuario_frecuente)
-        reprompt_output = "¿Quieres que te recuerde los comandos principales o añadir una receta?"
+        
+        # Usar Strategy pattern para generar respuesta
+        welcome_strategy = HandlerFactory.get_response_strategy('welcome')
+        context = {
+            'user_data': user_data,
+            'total_recetas': total_recetas,
+            'preparaciones_activas': preparaciones_activas,
+            'usuario_frecuente': usuario_frecuente
+        }
+        response_data = welcome_strategy.generate_response(handler_input, context)
 
         if not usuario_frecuente:
             user_data["usuario_frecuente"] = True
@@ -104,8 +356,8 @@ class LaunchRequestHandler(AbstractRequestHandler):
             
         return (
             handler_input.response_builder
-                .speak(speak_output)
-                .ask(reprompt_output)
+                .speak(response_data['speak_output'])
+                .ask(response_data['reprompt_output'])
                 .response
         )
 
@@ -1023,6 +1275,10 @@ sb.add_request_handler(MostrarOpcionesIntentHandler())
 # ContinuarAgregarHandler DEBE ir ANTES que otros handlers para interceptar respuestas
 sb.add_request_handler(ContinuarAgregarHandler())
 
+# Handlers que usan patrones de diseño
+sb.add_request_handler(RecetaBuilderHandler())
+sb.add_request_handler(PreparacionBuilderHandler())
+
 # Luego AgregarRecetaIntentHandler
 sb.add_request_handler(AgregarRecetaIntentHandler())
 
@@ -1042,4 +1298,53 @@ sb.add_request_handler(CancelOrStopIntentHandler())
 sb.add_request_handler(FallbackIntentHandler())
 sb.add_request_handler(SessionEndedRequestHandler())
 sb.add_exception_handler(CatchAllExceptionHandler())
+
+# ==============================
+# Demostración de patrones aplicados
+# ==============================
+def demonstrar_patrones_lambda():
+    """
+    Función de demostración de los patrones aplicados en lambda_function.py
+    Esta función muestra cómo se usan los patrones sin necesidad de handler_input real
+    """
+    print("=== PATRONES DE DISEÑO EN LAMBDA_FUNCTION.PY ===")
+    
+    # 1. Factory Pattern
+    print("\n1. FACTORY PATTERN:")
+    print("   - HandlerFactory.get_response_strategy('welcome')")
+    print("   - HandlerFactory.create_builder_based_handler('receta')")
+    
+    # 2. Strategy Pattern  
+    print("\n2. STRATEGY PATTERN:")
+    welcome_strategy = HandlerFactory.get_response_strategy('welcome')
+    error_strategy = HandlerFactory.get_response_strategy('error')
+    print(f"   - Estrategia Welcome: {type(welcome_strategy).__name__}")
+    print(f"   - Estrategia Error: {type(error_strategy).__name__}")
+    
+    # 3. Template Method Pattern
+    print("\n3. TEMPLATE METHOD PATTERN:")
+    print("   - BaseSkillHandler define el flujo común:")
+    print("     * prepare_context() -> validate_input() -> process_business_logic() -> generate_response()")
+    print("   - Los handlers específicos implementan los métodos abstractos")
+    
+    # 4. Builder Pattern en Handlers
+    print("\n4. BUILDER PATTERN EN HANDLERS:")
+    print("   - RecetaBuilderHandler usa RecetaBuilder para crear recetas")
+    print("   - PreparacionBuilderHandler usa PreparacionBuilder")
+    
+    # 5. Singleton Pattern (desde database.py)
+    print("\n5. SINGLETON PATTERN:")
+    print("   - DatabaseManager mantiene una instancia única")
+    
+    print("\n=== BENEFICIOS OBTENIDOS ===")
+    print("✅ Código más organizado y mantenible")
+    print("✅ Fácil extensión con nuevos handlers")
+    print("✅ Separación clara de responsabilidades")
+    print("✅ Reutilización de componentes")
+    print("✅ Testing más sencillo")
+
+# Crear el handler principal
 lambda_handler = sb.lambda_handler()
+
+# Comentar la siguiente línea para desactivar la demostración
+# demonstrar_patrones_lambda()

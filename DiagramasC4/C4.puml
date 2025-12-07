@@ -1,0 +1,270 @@
+@startuml C4_Clases
+!theme plain
+skinparam linetype ortho
+
+title Diagrama C4 - Nivel de Código: Clases y Relaciones
+
+package "lambda_function.py" {
+    class LaunchRequestHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+    }
+    
+    class AgregarRecetaIntentHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+        - _validar_slots(nombre, ingredientes, tipo): bool
+    }
+    
+    class ListarRecetasIntentHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+        - _formatear_lista_recetas(recetas): str
+    }
+    
+    class BuscarRecetaIntentHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+    }
+    
+    class RegistrarPreparacionIntentHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+    }
+    
+    class CompletarRecetaIntentHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+    }
+    
+    class LimpiarRecetarioIntentHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+    }
+    
+    class HelpIntentHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+    }
+    
+    class CancelAndStopIntentHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+    }
+    
+    class FallbackIntentHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+    }
+    
+    class SessionEndedRequestHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+    }
+    
+    class CatchAllExceptionHandler {
+        + can_handle(handler_input, exception): bool
+        + handle(handler_input, exception): Response
+    }
+}
+
+package "services.py" {
+    class RecetarioService <<static>> {
+        + {static} agregar_receta(handler_input, nombre, ingredientes, tipo): Receta | False
+        + {static} get_recetas(handler_input): List[dict]
+        + {static} sincronizar_y_filtrar_recetas(handler_input, filtro_tipo, ingredientes): Tuple[List, str]
+        + {static} obtener_pagina_recetas(recetas_filtradas, pagina_actual): dict
+        + {static} registrar_preparacion(handler_input, nombre, persona): Preparacion | str
+        + {static} registrar_completacion(handler_input, nombre, id_prep): dict | str
+        + {static} buscar_recetas(handler_input, nombre): List[dict]
+        + {static} get_preparaciones_activas_info(handler_input): Tuple[int, List]
+        + {static} obtener_resumen_preparaciones(handler_input): dict
+        + {static} limpiar_y_normalizar_valor(valor, esperando): str
+        + {static} get_recetas_disponibles_info(handler_input): Tuple[int, List]
+        + {static} buscar_preparacion_activa(preparaciones, nombre, id): Tuple[dict, int]
+    }
+    
+    class "Funciones Auxiliares" as FuncionesAux {
+        + buscar_receta_por_nombre(recetas, nombre): List[dict]
+        + buscar_receta_por_nombre_exacto(recetas, nombre): dict | None
+    }
+}
+
+package "database.py" {
+    class DatabaseManager <<static>> {
+        - {static} DDB_TABLE: str = "RecetarioSkillCache"
+        + {static} get_user_data(handler_input): dict
+        + {static} save_user_data(handler_input, user_data): None
+        - {static} _user_id(handler_input): str
+        - {static} _get_ddb_table(): Table | None
+    }
+    
+    class FakeS3Adapter {
+        - _FAKE_STORE: dict
+        + get_attributes(request_envelope): dict
+        + save_attributes(request_envelope, attributes): None
+        + delete_attributes(request_envelope): None
+        - {static} _user_id_from_envelope(request_envelope): str
+    }
+    
+    class "Cache Functions" as CacheFuncs {
+        - _CACHE: dict
+        + _cache_get(user_id): dict | None
+        + _cache_put(user_id, data): None
+    }
+}
+
+package "models.py" {
+    class Receta {
+        + id: str
+        + nombre: str
+        + ingredientes: str
+        + tipo: str
+        + fecha_agregado: str
+        + total_preparaciones: int
+        + estado: str
+        --
+        + _init_(nombre, ingredientes, tipo)
+        + to_dict(): dict
+        - {static} _normalize_value(value, default): str
+    }
+    
+    class Preparacion {
+        + id: str
+        + receta_id: str
+        + nombre: str
+        + persona: str
+        + fecha_preparacion: str
+        + fecha_limite: str
+        + estado: str
+        + fecha_completacion: str
+        + completada_a_tiempo: bool
+        --
+        + _init_(receta_id, nombre, nombre_persona, dias_preparacion)
+        + to_dict(): dict
+        + fecha_limite_readable: str <<property>>
+    }
+    
+    class "ID Generators" as IDGen {
+        + generar_id_unico(): str
+        + generar_id_preparacion(): str
+    }
+}
+
+package "phrases.py" {
+    class PhrasesManager <<static>> {
+        - CONFIRMACIONES: List[str]
+        - ALGO_MAS: List[str]
+        - PREGUNTAS: List[str]
+        - DESPEDIDAS: List[str]
+        --
+        + {static} get_welcome_message(user_data, total, preparaciones, frecuente): str
+        + {static} get_confirmaciones(): str
+        + {static} get_algo_mas(): str
+        + {static} get_preguntas_que_hacer(): str
+        + {static} get_despedida(): str
+    }
+}
+
+package "config.py" {
+    class Configuration <<static>> {
+        + USE_FAKE_S3: bool
+        + ENABLE_DDB_CACHE: bool
+        + CACHE_TTL_SECONDS: int
+        + RECETAS_POR_PAGINA: int
+        + S3_PERSISTENCE_BUCKET: str
+    }
+}
+
+package "Ask SDK (External)" {
+    interface AbstractRequestHandler {
+        + can_handle(handler_input): bool
+        + handle(handler_input): Response
+    }
+    
+    interface AbstractExceptionHandler {
+        + can_handle(handler_input, exception): bool
+        + handle(handler_input, exception): Response
+    }
+    
+    class HandlerInput {
+        + request_envelope: RequestEnvelope
+        + attributes_manager: AttributesManager
+        + response_builder: ResponseBuilder
+        + service_client_factory: ServiceClientFactory
+    }
+    
+    class Response {
+        + output_speech: str
+        + reprompt: str
+        + should_end_session: bool
+    }
+    
+    interface PersistenceAdapter {
+        + get_attributes(request_envelope): dict
+        + save_attributes(request_envelope, attributes): None
+        + delete_attributes(request_envelope): None
+    }
+    
+    class S3Adapter {
+        - bucket_name: str
+        + get_attributes(request_envelope): dict
+        + save_attributes(request_envelope, attributes): None
+    }
+}
+
+' Relaciones de Herencia
+LaunchRequestHandler --|> AbstractRequestHandler
+AgregarRecetaIntentHandler --|> AbstractRequestHandler
+ListarRecetasIntentHandler --|> AbstractRequestHandler
+BuscarRecetaIntentHandler --|> AbstractRequestHandler
+RegistrarPreparacionIntentHandler --|> AbstractRequestHandler
+CompletarRecetaIntentHandler --|> AbstractRequestHandler
+LimpiarRecetarioIntentHandler --|> AbstractRequestHandler
+HelpIntentHandler --|> AbstractRequestHandler
+CancelAndStopIntentHandler --|> AbstractRequestHandler
+FallbackIntentHandler --|> AbstractRequestHandler
+SessionEndedRequestHandler --|> AbstractRequestHandler
+CatchAllExceptionHandler --|> AbstractExceptionHandler
+
+FakeS3Adapter ..|> PersistenceAdapter
+S3Adapter ..|> PersistenceAdapter
+
+' Relaciones de Uso (Handlers -> Services)
+AgregarRecetaIntentHandler ..> RecetarioService : usa
+ListarRecetasIntentHandler ..> RecetarioService : usa
+BuscarRecetaIntentHandler ..> RecetarioService : usa
+RegistrarPreparacionIntentHandler ..> RecetarioService : usa
+CompletarRecetaIntentHandler ..> RecetarioService : usa
+LaunchRequestHandler ..> RecetarioService : usa
+
+' Relaciones de Uso (Services -> Database)
+RecetarioService ..> DatabaseManager : usa
+RecetarioService ..> Receta : crea
+RecetarioService ..> Preparacion : crea
+RecetarioService ..> FuncionesAux : usa
+
+' Relaciones de Uso (Database -> Adapters)
+DatabaseManager ..> S3Adapter : usa
+DatabaseManager ..> FakeS3Adapter : usa (dev)
+DatabaseManager ..> CacheFuncs : usa
+
+' Relaciones de Uso (Models -> ID Generators)
+Receta ..> IDGen : usa
+Preparacion ..> IDGen : usa
+
+' Relaciones de Uso (Handlers -> Phrases)
+LaunchRequestHandler ..> PhrasesManager : usa
+AgregarRecetaIntentHandler ..> PhrasesManager : usa
+ListarRecetasIntentHandler ..> PhrasesManager : usa
+HelpIntentHandler ..> PhrasesManager : usa
+
+' Relaciones de Configuración
+DatabaseManager ..> Configuration : lee
+RecetarioService ..> Configuration : lee
+
+' Relaciones con HandlerInput
+AbstractRequestHandler ..> HandlerInput : recibe
+AbstractRequestHandler ..> Response : retorna
+
+@enduml

@@ -1,0 +1,934 @@
+{
+    "interactionModel": {
+        "languageModel": {
+            "invocationName": "mi recetario",
+            "intents": [
+                {
+                    "name": "AMAZON.CancelIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.HelpIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.StopIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.NavigateHomeIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.FallbackIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.YesIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.NoIntent",
+                    "samples": []
+                },
+                {
+                    "name": "MostrarOpcionesIntent",
+                    "slots": [],
+                    "samples": [
+                        "dime las opciones",
+                        "cuáles son las opciones",
+                        "qué opciones tengo",
+                        "qué puedo hacer",
+                        "qué puedes hacer",
+                        "repíteme las opciones",
+                        "dime qué puedo hacer",
+                        "muéstrame las opciones",
+                        "qué funciones tienes",
+                        "ayúdame con las opciones",
+                        "no sé qué hacer",
+                        "qué me recomiendas"
+                    ]
+                },
+                {
+                    "name": "ListarRecetasIntent",
+                    "slots": [
+                        {
+                            "name": "filtro_tipo",
+                            "type": "FiltroTipoSlot"
+                        },
+                        {
+                            "name": "ingredientes",
+                            "type": "IngredientesSlot"
+                        }
+                    ],
+                    "samples": [
+                        "muestra las recetas {filtro_tipo}",
+                        "lista las recetas {filtro_tipo}",
+                        "qué recetas están {filtro_tipo}",
+                        "muestra las recetas con {ingredientes}",
+                        "lista las recetas con {ingredientes}",
+                        "qué recetas tengo con {ingredientes}",
+                        "dime las recetas que hay",
+                        "cuáles son las recetas disponibles",
+                        "muéstrame las recetas",
+                        "lista las recetas",
+                        "lista mis recetas",
+                        "muéstrame mi recetario",
+                        "qué hay en mi recetario",
+                        "cuántas recetas tengo",
+                        "qué recetas tengo",
+                        "lista todas las recetas",
+                        "muestra todas mis recetas",
+                        "dime todas mis recetas"
+                    ]
+                },
+                {
+                    "name": "BuscarRecetaIntent",
+                    "slots": [
+                        {
+                            "name": "nombre",
+                            "type": "NombreRecetaSlot"
+                        }
+                    ],
+                    "samples": [
+                        "busca la receta {nombre}",
+                        "buscar {nombre}",
+                        "encuentra {nombre}",
+                        "tengo la receta {nombre}",
+                        "información de {nombre}",
+                        "detalles de {nombre}",
+                        "dime sobre {nombre}",
+                        "muéstrame información de {nombre}"
+                    ]
+                },
+                {
+                    "name": "LimpiarCacheIntent",
+                    "slots": [],
+                    "samples": [
+                        "limpiar cache",
+                        "reiniciar datos",
+                        "limpiar memoria",
+                        "borrar cache",
+                        "reiniciar recetario"
+                    ]
+                },
+                {
+                    "name": "SiguientePaginaIntent",
+                    "slots": [],
+                    "samples": [
+                        "siguiente página",
+                        "siguiente",
+                        "más recetas",
+                        "muestra más",
+                        "ver más",
+                        "dame más"
+                    ]
+                },
+                {
+                    "name": "SalirListadoIntent",
+                    "slots": [],
+                    "samples": [
+                        "salir del listado",
+                        "terminar lista",
+                        "no más recetas",
+                        "parar lista",
+                        "detener lista",
+                        "ya no más",
+                        "suficiente recetas",
+                        "detener",
+                        "para"
+                    ]
+                },
+                {
+                    "name": "AgregarRecetaIntent",
+                    "slots": [
+                        {
+                            "name": "nombre",
+                            "type": "NombreRecetaSlot"
+                        },
+                        {
+                            "name": "ingredientes",
+                            "type": "IngredientesSlot"
+                        },
+                        {
+                            "name": "tipo",
+                            "type": "TipoComidaSlot"
+                        }
+                    ],
+                    "samples": [
+                        "quiero agregar una receta",
+                        "quiero agregar recetas",
+                        "agregar una receta",
+                        "agregar receta",
+                        "agregar recetas",
+                        "agrega una receta",
+                        "agrega receta",
+                        "agrega recetas",
+                        "añadir receta",
+                        "añadir recetas",
+                        "añadir una receta",
+                        "añade receta",
+                        "añade recetas",
+                        "nueva receta",
+                        "crear receta",
+                        "registrar receta",
+                        "guardar receta",
+                        "guardar una receta",
+                        "registrar una receta",
+                        "crear una receta",
+                        "quiero crear una receta",
+                        "quiero guardar una receta",
+                        "quiero registrar una receta",
+                        "quisiera agregar una receta",
+                        "me gustaría agregar una receta",
+                        "voy a agregar una receta",
+                        "déjame agregar una receta",
+                        "puedo agregar una receta",
+                        "agregar nueva receta",
+                        "añadir nueva receta",
+                        "crear nueva receta",
+                        "agrega {nombre} es de {tipo}",
+                        "registra la receta {nombre}",
+                        "quiero agregar la receta {nombre} con {ingredientes} de {tipo}",
+                        "guarda la receta {nombre} de tipo {tipo}",
+                        "añade la receta {nombre} con {ingredientes}",
+                        "agrega la receta {nombre}",
+                        "agrega {nombre}",
+                        "añade {nombre}",
+                        "crea {nombre}",
+                        "guarda {nombre}",
+                        "registra {nombre}"
+                    ]
+                },
+                {
+                    "name": "PrepararRecetaIntent",
+                    "slots": [
+                        {
+                            "name": "nombre",
+                            "type": "NombreRecetaSlot"
+                        },
+                        {
+                            "name": "nombre_persona",
+                            "type": "AMAZON.FirstName"
+                        }
+                    ],
+                    "samples": [
+                        "quiero preparar una receta",
+                        "preparar receta",
+                        "preparar una receta",
+                        "prepara receta",
+                        "prepárame {nombre}",
+                        "quiero preparar la receta {nombre}",
+                        "prepara la receta {nombre} con {nombre_persona}",
+                        "{nombre_persona} quiere preparar {nombre}",
+                        "quiero la receta {nombre} para {nombre_persona}",
+                        "prepárame la receta {nombre} para {nombre_persona}"
+                    ]
+                },
+                {
+                    "name": "RespuestaGeneralIntent",
+                    "slots": [
+                        {
+                            "name": "respuesta",
+                            "type": "AMAZON.SearchQuery"
+                        }
+                    ],
+                    "samples": [
+                        "es {respuesta}",
+                        "yo creo que {respuesta}",
+                        "yo digo {respuesta}",
+                        "mi respuesta es {respuesta}",
+                        "te digo {respuesta}",
+                        "los ingredientes son {respuesta}",
+                        "el tipo es {respuesta}",
+                        "el nombre es {respuesta}",
+                        "se llama {respuesta}",
+                        "la receta se llama {respuesta}",
+                        "le voy a poner {respuesta}",
+                        "quiero llamarla {respuesta}",
+                        "ponle {respuesta}",
+                        "ponle de nombre {respuesta}",
+                        "lleva {respuesta}",
+                        "tiene {respuesta}",
+                        "con {respuesta}",
+                        "necesita {respuesta}",
+                        "usa {respuesta}",
+                        "utiliza {respuesta}",
+                        "son {respuesta}",
+                        "serían {respuesta}",
+                        "pues {respuesta}",
+                        "creo que {respuesta}",
+                        "diría que {respuesta}",
+                        "sería {respuesta}",
+                        "de tipo {respuesta}",
+                        "es de {respuesta}",
+                        "es comida {respuesta}",
+                        "tipo {respuesta}",
+                        "categoría {respuesta}",
+                        "la categoría es {respuesta}",
+                        "solo {respuesta}",
+                        "simplemente {respuesta}",
+                        "pues {respuesta}",
+                        "eh {respuesta}",
+                        "este {respuesta}",
+                        "bueno {respuesta}",
+                        "sí {respuesta}",
+                        "ok {respuesta}",
+                        "a ver {respuesta}",
+                        "mmm {respuesta}",
+                        "no sé",
+                        "no lo sé",
+                        "no estoy seguro",
+                        "no me acuerdo",
+                        "no recuerdo",
+                        "desconocido"
+                    ]
+                },
+                {
+                    "name": "CompletarRecetaIntent",
+                    "slots": [
+                        {
+                            "name": "nombre",
+                            "type": "NombreRecetaSlot"
+                        },
+                        {
+                            "name": "id_preparacion",
+                            "type": "AMAZON.SearchQuery"
+                        }
+                    ],
+                    "samples": [
+                        "completar una receta",
+                        "terminé una receta",
+                        "completar preparación {id_preparacion}",
+                        "ya terminé la receta con ID {id_preparacion}",
+                        "ya preparé la receta {nombre}",
+                        "completé {nombre}",
+                        "terminé {nombre}",
+                        "completar {nombre}"
+                    ]
+                },
+                {
+                    "name": "ConsultarPreparacionesIntent",
+                    "slots": [],
+                    "samples": [
+                        "qué recetas tengo en preparación",
+                        "mis recetas en preparación",
+                        "qué recetas estoy preparando",
+                        "cuáles recetas están en preparación",
+                        "muéstrame las preparaciones activas",
+                        "consultar preparaciones",
+                        "recetas que estoy cocinando",
+                        "qué recetas preparé"
+                    ]
+                },
+                {
+                    "name": "ConsultarCompletadasIntent",
+                    "slots": [],
+                    "samples": [
+                        "historial de recetas completadas",
+                        "recetas que ya preparé",
+                        "mis recetas completadas",
+                        "cuáles recetas completé",
+                        "qué recetas he preparado",
+                        "muéstrame las recetas completadas",
+                        "historial de cocina",
+                        "lista todas las recetas preparadas",
+                        "muestra todo el historial de cocina"
+                    ]
+                },
+                {
+                    "name": "EliminarRecetaIntent",
+                    "slots": [
+                        {
+                            "name": "nombre",
+                            "type": "NombreRecetaSlot"
+                        }
+                    ],
+                    "samples": [
+                        "elimina {nombre}",
+                        "eliminar {nombre}",
+                        "quiero eliminar la receta {nombre}",
+                        "elimina la receta {nombre}",
+                        "borrar {nombre}",
+                        "borra la receta {nombre}"
+                    ]
+                }
+            ],
+            "types": [
+                {
+                    "name": "FiltroTipoSlot",
+                    "values": [
+                        {
+                            "name": {
+                                "value": "preparando",
+                                "synonyms": [
+                                    "preparando",
+                                    "en preparación"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "disponibles",
+                                "synonyms": [
+                                    "disponible"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "todas"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "NombreRecetaSlot",
+                    "values": [
+                        {
+                            "name": {
+                                "value": "no sé",
+                                "synonyms": [
+                                    "no lo sé",
+                                    "no se",
+                                    "desconocido",
+                                    "no estoy seguro",
+                                    "no me acuerdo",
+                                    "no recuerdo"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Tacos al pastor"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Enchiladas verdes"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Pozole rojo"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Chiles en nogada"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Mole poblano"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Guacamole"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Pasta carbonara"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Pizza margherita"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Sopa de tomate"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Ensalada César"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Arroz frito"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Sushi california"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Hamburguesa clásica"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Lasagna"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Pollo asado"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Pollo frito",
+                                "synonyms": [
+                                    "poolo frito",
+                                    "polo frito"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Pescado a la talla"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Flan napolitano"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Brownies de chocolate"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Pay de limón"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Ceviche"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Quesadillas"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Chilaquiles"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Tortas"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "Tamales"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IngredientesSlot",
+                    "values": [
+                        {
+                            "name": {
+                                "value": "no sé",
+                                "synonyms": [
+                                    "no lo sé",
+                                    "no se",
+                                    "desconocido",
+                                    "no estoy seguro",
+                                    "no me acuerdo",
+                                    "no los sé",
+                                    "no sé los ingredientes"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "pollo",
+                                "synonyms": [
+                                    "pechuga",
+                                    "pechuga de pollo",
+                                    "muslos de pollo",
+                                    "alitas",
+                                    "pollo entero"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "res",
+                                "synonyms": [
+                                    "carne de res",
+                                    "bistec",
+                                    "arrachera",
+                                    "filete"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "cerdo",
+                                "synonyms": [
+                                    "carne de cerdo",
+                                    "chuletas",
+                                    "costillas",
+                                    "pastor",
+                                    "tocino"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "pescado",
+                                "synonyms": [
+                                    "filete de pescado",
+                                    "salmón",
+                                    "atún",
+                                    "tilapia",
+                                    "robalo"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "mariscos",
+                                "synonyms": [
+                                    "camarones",
+                                    "camarón",
+                                    "almejas",
+                                    "pulpo",
+                                    "calamar"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "verduras",
+                                "synonyms": [
+                                    "vegetales",
+                                    "legumbres",
+                                    "verduritas"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "queso",
+                                "synonyms": [
+                                    "queso fresco",
+                                    "queso manchego",
+                                    "queso panela",
+                                    "queso oaxaca",
+                                    "queso cheddar"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "tomate",
+                                "synonyms": [
+                                    "jitomate",
+                                    "tomates",
+                                    "jitomates"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "cebolla",
+                                "synonyms": [
+                                    "cebollas",
+                                    "cebolla morada",
+                                    "cebolla blanca"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "ajo",
+                                "synonyms": [
+                                    "ajos",
+                                    "dientes de ajo"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "arroz",
+                                "synonyms": [
+                                    "arroz blanco",
+                                    "arroz integral"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "pasta",
+                                "synonyms": [
+                                    "espagueti",
+                                    "fettuccine",
+                                    "macarrones",
+                                    "penne"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "harina",
+                                "synonyms": [
+                                    "harina de trigo",
+                                    "harina integral"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "huevos",
+                                "synonyms": [
+                                    "huevo",
+                                    "blanquillos"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "leche",
+                                "synonyms": [
+                                    "leche entera",
+                                    "leche descremada"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "crema",
+                                "synonyms": [
+                                    "crema ácida",
+                                    "crema espesa"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "chile",
+                                "synonyms": [
+                                    "chiles",
+                                    "jalapeño",
+                                    "serrano",
+                                    "chile poblano"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "especias",
+                                "synonyms": [
+                                    "condimentos",
+                                    "sal y pimienta",
+                                    "hierbas"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "TipoComidaSlot",
+                    "values": [
+                        {
+                            "name": {
+                                "value": "no sé",
+                                "synonyms": [
+                                    "no lo sé",
+                                    "no se",
+                                    "desconocido",
+                                    "no estoy seguro",
+                                    "no sé el tipo"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "mexicana",
+                                "synonyms": [
+                                    "méxico",
+                                    "comida mexicana"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "italiana",
+                                "synonyms": [
+                                    "italia",
+                                    "comida italiana"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "china",
+                                "synonyms": [
+                                    "comida china",
+                                    "asiática"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "japonesa",
+                                "synonyms": [
+                                    "comida japonesa",
+                                    "japón"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "francesa",
+                                "synonyms": [
+                                    "comida francesa",
+                                    "francia"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "americana",
+                                "synonyms": [
+                                    "comida americana",
+                                    "fast food"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "vegetariana",
+                                "synonyms": [
+                                    "vegetariano",
+                                    "comida vegetariana"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "vegana",
+                                "synonyms": [
+                                    "vegano",
+                                    "comida vegana"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "mariscos",
+                                "synonyms": [
+                                    "de mar",
+                                    "pescados y mariscos"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "carnes",
+                                "synonyms": [
+                                    "carne",
+                                    "de carne"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "ensaladas",
+                                "synonyms": [
+                                    "ensalada",
+                                    "saludable"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "sopas",
+                                "synonyms": [
+                                    "sopa",
+                                    "caldos",
+                                    "caldo"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "postres",
+                                "synonyms": [
+                                    "postre",
+                                    "dulce",
+                                    "dulces",
+                                    "repostería"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "desayunos",
+                                "synonyms": [
+                                    "desayuno",
+                                    "breakfast"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "bebidas",
+                                "synonyms": [
+                                    "bebida",
+                                    "drinks"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "aperitivos",
+                                "synonyms": [
+                                    "aperitivo",
+                                    "botanas",
+                                    "snacks",
+                                    "entradas"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "española",
+                                "synonyms": [
+                                    "españa",
+                                    "comida española"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "india",
+                                "synonyms": [
+                                    "comida india",
+                                    "hindú"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "tailandesa",
+                                "synonyms": [
+                                    "comida tailandesa",
+                                    "tailandia"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

@@ -1,24 +1,28 @@
 import os
-import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 import random
 import uuid
 
 import ask_sdk_core.utils as ask_utils
 from ask_sdk_core.skill_builder import CustomSkillBuilder
 from ask_sdk_core.dispatch_components import AbstractRequestHandler, AbstractExceptionHandler
-from ask_sdk_model import Response, DialogState
-from ask_sdk_model.dialog import ElicitSlotDirective, DelegateDirective
 from ask_sdk_s3.adapter import S3Adapter
 from ask_sdk_core.handler_input import HandlerInput
 
-import boto3
-from botocore.exceptions import ClientError
 import phrases
 from phrases import PhrasesManager
 from config import USE_FAKE_S3, S3_PERSISTENCE_BUCKET, RECETAS_POR_PAGINA
-from database import DatabaseManager, FakeS3Adapter
+
+# Importar componentes SOLID
+from database import (
+    FakeS3Adapter, 
+    InMemoryCacheStrategy, 
+    DynamoDBCacheStrategy, 
+    UserRepository,
+    DatabaseManager
+)
+from services_domain import RecetaStateService
 from services import RecetarioService
 from models import Preparacion
 
@@ -26,7 +30,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # ==============================
-# Inicializar persistence adapter
+# Inicializar persistence adapter y repositorio (Dependency Injection)
 # ==============================
 if USE_FAKE_S3:
     persistence_adapter = FakeS3Adapter()
@@ -36,6 +40,20 @@ else:
         raise RuntimeError("S3_PERSISTENCE_BUCKET es requerido cuando USE_FAKE_S3=false")
     logger.info(f"🪣 Usando S3Adapter con bucket: {s3_bucket}")
     persistence_adapter = S3Adapter(bucket_name=s3_bucket)
+
+# Inicializar estrategias de cache
+memory_cache = InMemoryCacheStrategy()
+ddb_cache = DynamoDBCacheStrategy() if os.getenv("ENABLE_DDB_CACHE", "false").lower() == "true" else None
+
+# Crear repositorio con inyección de dependencias
+user_repository = UserRepository(
+    persistence_adapter=persistence_adapter,
+    memory_cache=memory_cache,
+    ddb_cache=ddb_cache
+)
+
+# Inicializar DatabaseManager con el repositorio (Facade Pattern)
+DatabaseManager.initialize(user_repository)
 
 sb = CustomSkillBuilder(persistence_adapter=persistence_adapter)
 
@@ -51,54 +69,14 @@ def sincronizar_estados_recetas(user_data):
     recetas = user_data.get("recetas_disponibles", [])
     preparaciones = user_data.get("preparaciones_activas", [])
     
-    # Primero, asegurar que todas las recetas tengan ID
-    for receta in recetas:
-        if not receta.get("id"):
-            receta["id"] = generar_id_unico()
-    
-    # Luego, actualizar estados
-    ids_preparando = {p.get("receta_id") for p in preparaciones if p.get("receta_id")}
-    
-    for receta in recetas:
-        if receta.get("id") in ids_preparando:
-            receta["estado"] = "preparando"
-        else:
-            receta["estado"] = "disponible"
+    # Delegar a RecetaStateService (SOLID - Single Responsibility)
+    recetas_sincronizadas = RecetaStateService.sincronizar_estados(recetas, preparaciones)
+    user_data["recetas_disponibles"] = recetas_sincronizadas
     
     return user_data
 
-def buscar_receta_por_nombre(recetas, nombre_busqueda):
-    """Busca recetas por nombre y devuelve una lista de coincidencias"""
-    nombre_busqueda = (nombre_busqueda or "").lower().strip()
-    resultados = []
-    for receta in recetas:
-        if isinstance(receta, dict):
-            nombre_receta = (receta.get("nombre") or "").lower()
-            if nombre_busqueda in nombre_receta or nombre_receta in nombre_busqueda:
-                resultados.append(receta)
-    return resultados
-
-def buscar_receta_por_nombre_exacto(recetas, nombre_busqueda):
-    """Busca una receta por nombre y devuelve la primera que coincida"""
-    nombre_busqueda = (nombre_busqueda or "").lower().strip()
-    for receta in recetas:
-        if isinstance(receta, dict):
-            nombre_receta = (receta.get("nombre") or "").lower()
-            if nombre_busqueda in nombre_receta or nombre_receta in nombre_busqueda:
-                return receta
-    return None
-
-def buscar_recetas_por_tipo(recetas, tipo_busqueda):
-    tipo_busqueda = (tipo_busqueda or "").lower().strip()
-    resultados = []
-    for receta in recetas:
-        if isinstance(receta, dict):
-            tipo_receta = (receta.get("tipo") or "").lower()
-            if tipo_busqueda in tipo_receta or tipo_receta in tipo_busqueda:
-                resultados.append(receta)
-    return resultados
-
 def generar_id_preparacion():
+    """Genera un ID único para preparaciones"""
     return f"PREP-{datetime.now().strftime('%Y%m%d')}-{generar_id_unico()}"
 
 # ==============================
@@ -349,7 +327,7 @@ class ListarRecetasIntentHandler(AbstractRequestHandler):
         
         if total_filtradas <= RECETAS_POR_PAGINA:
             speak_output = f"Tienes {total_filtradas} recetas{titulo_filtro}: "
-            nombres = [f"'{l.get('nombre', 'Sin nombre')}'" for l in recetas_pagina]
+            nombres = [f"'{receta.get('nombre', 'Sin nombre')}'" for receta in recetas_pagina]
             speak_output += ", ".join(nombres) + f". {PhrasesManager.get_algo_mas()}"
             
             session_attrs["pagina_recetas"] = 0
@@ -359,7 +337,7 @@ class ListarRecetasIntentHandler(AbstractRequestHandler):
             speak_output = f"Tienes {total_filtradas} recetas{titulo_filtro}. Te las voy a mostrar de {RECETAS_POR_PAGINA} en {RECETAS_POR_PAGINA}. "
             speak_output += f"Recetas del {inicio + 1} al {fin}: "
             
-            nombres = [f"'{l.get('nombre', 'Sin nombre')}'" for l in recetas_pagina]
+            nombres = [f"'{receta.get('nombre', 'Sin nombre')}'" for receta in recetas_pagina]
             speak_output += ", ".join(nombres) + ". "
             session_attrs["pagina_recetas"] = pagina_actual + 1
             session_attrs["listando_recetas"] = True
@@ -525,8 +503,8 @@ class BuscarRecetaIntentHandler(AbstractRequestHandler):
             else:
                 speak_output = f"Encontré {len(recetas_encontradas)} recetas que coinciden con '{nombre_buscado}': "
                 nombres_ingredientes = [
-                    f"'{l['nombre']}' con {l.get('ingredientes', 'Desconocido')}" 
-                    for l in recetas_encontradas[:3]
+                    f"'{receta['nombre']}' con {receta.get('ingredientes', 'Desconocido')}" 
+                    for receta in recetas_encontradas[:3]
                 ]
                 speak_output += ", ".join(nombres_ingredientes)
                 
@@ -819,18 +797,23 @@ class MostrarOpcionesIntentHandler(AbstractRequestHandler):
 
 class SiguientePaginaIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
-        return ask_utils.is_intent_name("SiguientePaginaIntent")(handler_input)
+        # Solo manejar si estamos en contexto de paginación
+        session_attrs = handler_input.attributes_manager.session_attributes
+        is_listing = session_attrs.get("listando_recetas", False)
+        
+        return (ask_utils.is_intent_name("SiguientePaginaIntent")(handler_input) and is_listing)
 
     def handle(self, handler_input):
         try:
             session_attrs = handler_input.attributes_manager.session_attributes
             
+            # Verificación adicional de seguridad
             if not session_attrs.get("listando_recetas"):
-                speak_output = "No estoy mostrando una lista en este momento. ¿Quieres ver tus recetas?"
+                # Si alguien llegó aquí sin estar listando, redirigir amablemente
                 return (
                     handler_input.response_builder
-                        .speak(speak_output)
-                        .ask("¿Quieres que liste tus recetas?")
+                        .speak("¿Qué te gustaría hacer? Puedo ayudarte a listar recetas, agregar una nueva, o preparar una receta.")
+                        .ask("¿En qué puedo ayudarte?")
                         .response
                 )
             
@@ -932,10 +915,7 @@ class FallbackIntentHandler(AbstractRequestHandler):
         
         # Si estamos agregando una receta, manejar las respuestas
         if session_attrs.get("agregando_receta"):
-            paso_actual = session_attrs.get("paso_actual")
-            
-            # Intentar obtener el texto del usuario del request
-            request = handler_input.request_envelope.request
+            paso_actual = session_attrs.get("esperando")  # Usar "esperando" en lugar de "paso_actual"
             
             # Para el fallback, Alexa a veces incluye el texto en el intent name o en slots genéricos
             # Vamos a asumir que el usuario respondió correctamente
@@ -952,7 +932,7 @@ class FallbackIntentHandler(AbstractRequestHandler):
             elif paso_actual == "ingredientes":
                 # Asumimos que dijo "no sé" o unos ingredientes no reconocidos
                 session_attrs["ingredientes_temp"] = "Desconocido"
-                session_attrs["paso_actual"] = "tipo"
+                session_attrs["esperando"] = "tipo"
                 nombre = session_attrs.get("nombre_temp")
                 
                 return (
@@ -968,53 +948,24 @@ class FallbackIntentHandler(AbstractRequestHandler):
                 ingredientes_final = session_attrs.get("ingredientes_temp", "Desconocido")
                 tipo_final = "Sin categoría"
                 
-                # Guardar la receta
-                user_data = DatabaseManager.get_user_data(handler_input)
-                recetas = user_data.get("recetas_disponibles", [])
-                
-                # Verificar duplicado
-                for receta in recetas:
-                    if receta.get("nombre", "").lower() == nombre_final.lower():
-                        handler_input.attributes_manager.session_attributes = {}
-                        return (
-                            handler_input.response_builder
-                                .speak(f"'{nombre_final}' ya está en tu recetario. " + phrases.PhrasesManager.get_algo_mas())
-                                .ask(phrases.PhrasesManager.get_preguntas_que_hacer())
-                                .response
-                        )
-                
-                nueva_receta = {
-                    "id": generar_id_unico(),
-                    "nombre": nombre_final,
-                    "ingredientes": ingredientes_final,
-                    "tipo": tipo_final,
-                    "fecha_agregado": datetime.now().isoformat(),
-                    "total_preparaciones": 0,
-                    "estado": "disponible"
-                }
-                
-                recetas.append(nueva_receta)
-                user_data["recetas_disponibles"] = recetas
-                
-                # Actualizar estadísticas
-                stats = user_data.setdefault("estadisticas", {})
-                stats["total_recetas"] = len(recetas)
-                
-                DatabaseManager.save_user_data(handler_input, user_data)
+                # Usar el servicio para agregar la receta
+                nueva_receta = RecetarioService.agregar_receta(handler_input, nombre_final, ingredientes_final, tipo_final)
                 
                 # Limpiar sesión
                 handler_input.attributes_manager.session_attributes = {}
                 
-                speak_output = f"¡Perfecto! He agregado '{nombre_final}'"
-                if ingredientes_final != "Desconocido":
-                    speak_output += f" con {ingredientes_final}"
-                speak_output += f". Ahora tienes {len(recetas)} recetas en tu recetario. "
-                speak_output += phrases.PhrasesManager.get_algo_mas()
+                if nueva_receta is False:
+                    speak_output = f"'{nombre_final}' ya está en tu recetario. {PhrasesManager.get_algo_mas()}"
+                else:
+                    ingredientes_text = f" con {nueva_receta.ingredientes}" if nueva_receta.ingredientes != "Desconocido" else ""
+                    speak_output = f"¡Perfecto! He agregado '{nueva_receta.nombre}'{ingredientes_text}. "
+                    speak_output += f"Ahora tienes {len(RecetarioService.get_recetas(handler_input))} recetas en tu recetario. "
+                    speak_output += PhrasesManager.get_algo_mas()
                 
                 return (
                     handler_input.response_builder
                         .speak(speak_output)
-                        .ask(phrases.PhrasesManager.get_preguntas_que_hacer())
+                        .ask(PhrasesManager.get_preguntas_que_hacer())
                         .response
                 )
         
